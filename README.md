@@ -13,5 +13,5 @@ This functionality is backed by the following libraries:
 - [confluent-schema-registry](https://github.com/confluentinc/schema-registry) is used as a basis for implementation and small portions are used for JSON Schema validation
 
 ### Notes ###
-- Please note that this is only an initial design to prove the functionality and I'm very happy to integrate this back into FS2 Kafka so please submit an issue and we can take it from there
+- Please note that this is only an initial design to prove the functionality and I'm very happy to integrate this back into FS2 Kafka (and other Kafka libraries) so please submit an issue and we can take it from there
 - This library provides additional validation checks for the Deserialization side on top of what Confluent provides in their Java JSON Schema Deserializer
