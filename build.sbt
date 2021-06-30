@@ -2,8 +2,6 @@ organization := "io.kaizensolutions"
 
 name := "fs2-kafka-jsonschema-support"
 
-version := "0.1"
-
 scalaVersion := "2.13.6"
 
 scalacOptions ++= Seq(
