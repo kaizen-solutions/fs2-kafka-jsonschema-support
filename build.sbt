@@ -49,6 +49,9 @@ libraryDependencies ++= {
 
 releaseIgnoreUntrackedFiles := true
 
+// Use just the version as the tag name (do not prefix with v)
+releaseTagName := s"${version.value}"
+
 releaseProcess := Seq[ReleaseStep](
   checkSnapshotDependencies,
   inquireVersions,
