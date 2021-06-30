@@ -44,3 +44,5 @@ libraryDependencies ++= {
     "io.confluent"         % "kafka-json-schema-serializer" % "6.2.0"
   )
 }
+
+releaseIgnoreUntrackedFiles := true
