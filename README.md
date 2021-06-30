@@ -1,6 +1,8 @@
 ## FS2 Kafka JsonSchema support ##
 
 ![CI Build Status](https://github.com/kaizen-solutions/fs2-kafka-jsonschema-support/actions/workflows/scala.yml/badge.svg)
+[![](https://jitpack.io/v/kaizen-solutions/fs2-kafka-jsonschema-support.svg)](https://jitpack.io/#kaizen-solutions/fs2-kafka-jsonschema-support)
+
 
 Provides FS2 Kafka `Serializer`s and `Deserializer`s that provide integration with Confluent Schema Registry for JSON messages with JSON Schemas. 
 This library also provides an enrichment to fs2 kafka's vulcan `SchemaRegistryClientSettings` which is needed to enable additional JSON validation support 
@@ -13,6 +15,13 @@ This functionality is backed by the following libraries:
 - [confluent-schema-registry](https://github.com/confluentinc/schema-registry) is used as a basis for implementation and small portions are used for JSON Schema validation
 
 ### Usage ###
+
+Add the following to your `build.sbt`
+```sbt
+resolvers += "jitpack" at "https://jitpack.io"
+
+libraryDependencies += "com.github.kaizen-solutions" %% "fs2-kafka-jsonschema-support" % "<version>"
+```
 
 1. Define your data-types
 ```scala
