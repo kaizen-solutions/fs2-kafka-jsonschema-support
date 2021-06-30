@@ -1,3 +1,5 @@
+import ReleaseTransformations._
+
 organization := "io.kaizensolutions"
 
 name := "fs2-kafka-jsonschema-support"
@@ -46,3 +48,16 @@ libraryDependencies ++= {
 }
 
 releaseIgnoreUntrackedFiles := true
+
+releaseProcess := Seq[ReleaseStep](
+  checkSnapshotDependencies,
+  inquireVersions,
+  runClean,
+  runTest,
+  setReleaseVersion,
+  commitReleaseVersion,
+  tagRelease,
+  setNextVersion,
+  commitNextVersion,
+  pushChanges
+)
