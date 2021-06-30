@@ -1,6 +1,2 @@
-jdk:
-  - openjdk9
-
-before_install:
-  - sdk install java 11.0.11-zulu
-  - sdk use java 11.0.11-zulu
+install:
+  - sbt +publishM2
