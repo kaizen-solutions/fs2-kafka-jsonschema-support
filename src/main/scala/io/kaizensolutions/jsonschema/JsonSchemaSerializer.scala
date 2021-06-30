@@ -2,14 +2,16 @@ package io.kaizensolutions.jsonschema
 
 import cats.effect.{Ref, Sync}
 import cats.syntax.all._
+import com.fasterxml.jackson.databind.JsonNode
 import com.github.andyglow.jsonschema._
 import fs2.kafka.{RecordSerializer, Serializer}
+import io.circe.Encoder
 import io.circe.jackson.circeToJackson
 import io.circe.syntax._
-import io.circe.{Encoder, Json}
 import io.confluent.kafka.schemaregistry.ParsedSchema
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
 import io.confluent.kafka.schemaregistry.json.JsonSchema
+import io.confluent.kafka.schemaregistry.json.jackson.Jackson
 import io.kaizensolutions.jsonschema.JsonSchemaSerializer.SubjectSchema
 
 import java.io.{ByteArrayOutputStream, IOException}
@@ -40,64 +42,76 @@ object JsonSchemaSerializer {
     schema: ParsedSchema
   )
 
-  def apply[F[_]: Sync, A: Encoder: json.Schema: ClassTag](
+  def apply[F[_]: Sync, A: Encoder](
     settings: JsonSchemaSerializerSettings,
     client: SchemaRegistryClient
-  ): F[RecordSerializer[F, A]] =
-    Ref.of[F, Map[SubjectSchema, ParsedSchema]](Map.empty).map { cache =>
-      val serializer = JsonSchemaSerializer[F, A](client, settings, cache)
+  )(implicit jsonSchema: json.Schema[A], tag: ClassTag[A]): F[RecordSerializer[F, A]] = {
+    val fSchema =
+      Sync[F].delay {
+        val instance = new JsonSchema(
+          jsonSchema.draft07(
+            settings.jsonSchemaId.getOrElse(tag.runtimeClass.getSimpleName.toLowerCase + "schema.json")
+          )
+        )
+        instance.validate()
+        instance
+      }
+
+    val fCache = Ref.of[F, Map[SubjectSchema, ParsedSchema]](Map.empty)
+
+    (fSchema, fCache).mapN { case (schema, cache) =>
+      val serializer = JsonSchemaSerializer[F, A](client, settings, cache, schema)
       RecordSerializer.instance(
         forKey = Sync[F].pure(serializer.jsonSchemaSerializer(true)),
         forValue = Sync[F].pure(serializer.jsonSchemaSerializer(false))
       )
     }
+  }
 }
 
 private[jsonschema] final case class JsonSchemaSerializer[F[_]: Sync, A: Encoder] private (
   client: SchemaRegistryClient,
   settings: JsonSchemaSerializerSettings,
-  cache: Ref[F, Map[SubjectSchema, ParsedSchema]]
-)(implicit jsonSchema: json.Schema[A], tag: ClassTag[A]) {
+  cache: Ref[F, Map[SubjectSchema, ParsedSchema]],
+  clientSchema: JsonSchema
+) {
   private val MagicByte: Byte = 0x0
   private val IdSize: Int     = 4
 
-  private val schema = new JsonSchema(
-    jsonSchema
-      .draft07(
-        settings.jsonSchemaId
-          .getOrElse(tag.runtimeClass.getSimpleName.toLowerCase + ".schema.json")
-      )
-  )
+  private val objectMapper = Jackson.newObjectMapper()
+  private val objectWriter = objectMapper.writer()
 
   def jsonSchemaSerializer(isKey: Boolean): Serializer[F, A] = {
     val mkSubject = subjectName(isKey) _
 
     Serializer.instance[F, A] { (topic, _, data) =>
-      val jsonPayload            = data.asJson
-      val subject                = mkSubject(topic)
+      val jsonPayload: JsonNode = circeToJackson(data.asJson)
+      val subject               = mkSubject(topic)
+
       val fSchema: F[JsonSchema] =
         if (!settings.automaticRegistration && settings.useLatestVersion)
-          lookupLatestVersion(subject, schema, cache, settings.latestCompatStrict)
+          lookupLatestVersion(subject, clientSchema, cache, settings.latestCompatStrict)
             .map(_.asInstanceOf[JsonSchema])
-        else Sync[F].pure(schema)
+        else Sync[F].pure(clientSchema)
 
       val fId: F[Int] =
-        if (settings.automaticRegistration) registerSchema(subject, schema)
+        if (settings.automaticRegistration) registerSchema(subject, clientSchema)
         else if (settings.useLatestVersion)
-          lookupLatestVersion(subject, schema, cache, settings.latestCompatStrict)
+          lookupLatestVersion(subject, clientSchema, cache, settings.latestCompatStrict)
             .flatMap(s => getId(subject, s.asInstanceOf[JsonSchema]))
-        else getId(subject, schema)
+        else getId(subject, clientSchema)
 
       for {
         schema <- fSchema
         _      <- validatePayload(schema, jsonPayload)
         id     <- fId
         bytes  <- Sync[F].delay {
-                    val baos  = new ByteArrayOutputStream()
+                    val payloadBytes = objectWriter.writeValueAsBytes(jsonPayload)
+                    val baos         = new ByteArrayOutputStream()
                     baos.write(MagicByte.toInt)
                     baos.write(ByteBuffer.allocate(IdSize).putInt(id).array())
-                    baos.write(jsonPayload.noSpaces.getBytes("UTF-8"))
-                    val bytes = baos.toByteArray
+                    baos.write(payloadBytes)
+                    val bytes        = baos.toByteArray
                     baos.close()
                     bytes
                   }
@@ -105,8 +119,8 @@ private[jsonschema] final case class JsonSchemaSerializer[F[_]: Sync, A: Encoder
     }
   }
 
-  private def validatePayload(schema: JsonSchema, jsonPayload: Json): F[Unit] =
-    if (settings.validatePayload) Sync[F].delay(schema.validate(circeToJackson(jsonPayload)))
+  private def validatePayload(schema: JsonSchema, jsonPayload: JsonNode): F[Unit] =
+    if (settings.validatePayload) Sync[F].delay(schema.validate(jsonPayload))
     else Sync[F].unit
 
   private def subjectName(isKey: Boolean)(topic: String): String =
