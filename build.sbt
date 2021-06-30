@@ -19,7 +19,10 @@ scalacOptions ++= Seq(
   "-Ywarn-numeric-widen",
   "-Ywarn-value-discard",
   "-Ywarn-unused",
-  "-Xfatal-warnings"
+  "-Xfatal-warnings",
+  "-Vimplicits",
+  "-Vtype-diffs",
+  "-Xsource:3"
 )
 
 resolvers ++= Seq(

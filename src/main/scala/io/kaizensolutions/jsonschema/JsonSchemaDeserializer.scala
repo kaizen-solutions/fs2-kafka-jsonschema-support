@@ -18,7 +18,7 @@ import scala.reflect.ClassTag
 
 // See AbstractKafkaJsonSchemaDeserializer
 object JsonSchemaDeserializer   {
-  def make[F[_]: Sync, A: Decoder](
+  def apply[F[_]: Sync, A: Decoder](
     settings: JsonSchemaDeserializerSettings,
     client: SchemaRegistryClient
   )(implicit jsonSchema: json.Schema[A], tag: ClassTag[A]): F[Deserializer[F, A]] = {

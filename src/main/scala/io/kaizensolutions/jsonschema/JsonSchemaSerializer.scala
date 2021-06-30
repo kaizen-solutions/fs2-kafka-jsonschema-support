@@ -145,7 +145,14 @@ private[jsonschema] final case class JsonSchemaSerializer[F[_]: Sync, A: Encoder
           )
         }.flatMap { optSchema =>
           if (optSchema.isPresent) Sync[F].pure(optSchema.get)
-          else Sync[F].raiseError(new IOException(s"Invalid schema ${metadata.getSchema}"))
+          else
+            Sync[F].delay(new JsonSchema(metadata.getSchema).validate()) >>
+              // successfully parsed the schema locally means that the client was not properly configured
+              Sync[F].raiseError[ParsedSchema](
+                new RuntimeException(
+                  "Please enable JSON support in SchemaRegistryClientSettings by using withJsonSchemaSupport"
+                )
+              )
         }
       }
 
