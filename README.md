@@ -18,7 +18,10 @@ This functionality is backed by the following libraries:
 
 Add the following to your `build.sbt`
 ```sbt
-resolvers += "jitpack" at "https://jitpack.io"
+resolvers ++= Seq(
+  "jitpack" at "https://jitpack.io",
+  "confluent" at "https://packages.confluent.io/maven"
+)
 
 libraryDependencies += "com.github.kaizen-solutions" %% "fs2-kafka-jsonschema-support" % "<version>"
 ```
