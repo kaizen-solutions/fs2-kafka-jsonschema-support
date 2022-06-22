@@ -17,7 +17,6 @@ import json.{Json, Schema}
 import munit.CatsEffectSuite
 
 import java.io.{File, IOException}
-import scala.annotation.nowarn
 import scala.concurrent.duration.DurationInt
 import scala.reflect.ClassTag
 
@@ -289,8 +288,8 @@ class JsonSchemaSerDesSpec extends CatsEffectSuite with TestContainersForAll {
 }
 
 object Book {
-  @nowarn implicit val bookJsonSchema: Schema[Book] = Json.schema[Book]
-  @nowarn implicit val bookCodec: Codec[Book]       = deriveCodec[Book]
+  implicit val bookJsonSchema: Schema[Book] = Json.schema[Book]
+  implicit val bookCodec: Codec[Book]       = deriveCodec[Book]
 }
 final case class Book(
   @description("name of the book") name: String,
@@ -298,8 +297,8 @@ final case class Book(
 )
 
 object PersonV1 {
-  @nowarn implicit val personJsonSchema: Schema[PersonV1] = Json.schema[PersonV1]
-  @nowarn implicit val personCodec: Codec[PersonV1]       = deriveCodec[PersonV1]
+  implicit val personJsonSchema: Schema[PersonV1] = Json.schema[PersonV1]
+  implicit val personCodec: Codec[PersonV1]       = deriveCodec[PersonV1]
 }
 final case class PersonV1(
   @description("name of the person") name: String,
@@ -309,8 +308,8 @@ final case class PersonV1(
 
 // V2 is backwards incompatible with V1 because the key has changed
 object PersonV2Bad {
-  @nowarn implicit val personV2BadJsonSchema: Schema[PersonV2Bad] = Json.schema[PersonV2Bad]
-  @nowarn implicit val personV2BadCodec: Codec[PersonV2Bad]       = deriveCodec[PersonV2Bad]
+  implicit val personV2BadJsonSchema: Schema[PersonV2Bad] = Json.schema[PersonV2Bad]
+  implicit val personV2BadCodec: Codec[PersonV2Bad]       = deriveCodec[PersonV2Bad]
 }
 final case class PersonV2Bad(
   @description("name of the person") name: String,
@@ -319,8 +318,8 @@ final case class PersonV2Bad(
 )
 
 object PersonV2Good {
-  @nowarn implicit val personV2GoodJsonSchema: Schema[PersonV2Good] = Json.schema[PersonV2Good]
-  @nowarn implicit val personV2GoodCodec: Codec[PersonV2Good] = {
+  implicit val personV2GoodJsonSchema: Schema[PersonV2Good] = Json.schema[PersonV2Good]
+  implicit val personV2GoodCodec: Codec[PersonV2Good] = {
     val encoder: Encoder[PersonV2Good] = deriveEncoder[PersonV2Good]
 
     val decoder: Decoder[PersonV2Good] = cursor =>
