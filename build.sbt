@@ -27,7 +27,6 @@ ThisBuild / scalacOptions ++= {
         "-Ywarn-numeric-widen",
         "-Ywarn-value-discard",
         "-Ywarn-unused",
-        "-Xfatal-warnings",
         "-Xsource:3"
       )
 
