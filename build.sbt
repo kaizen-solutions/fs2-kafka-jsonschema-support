@@ -2,7 +2,7 @@ import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations._
 
 inThisBuild {
   val scala212 = "2.12.16"
-  val scala213 = "2.13.8"
+  val scala213 = "2.13.10"
 
   Seq(
     scalaVersion       := scala213,
@@ -70,17 +70,17 @@ lazy val root =
       libraryDependencies ++= {
         val circe     = "io.circe"
         val fd4s      = "com.github.fd4s"
-        val fs2KafkaV = "2.4.0"
+        val fs2KafkaV = "2.5.0"
         Seq(
           fd4s                     %% "fs2-kafka"                    % fs2KafkaV,
           fd4s                     %% "fs2-kafka-vulcan"             % fs2KafkaV,
-          "com.github.andyglow"    %% "scala-jsonschema"             % "0.7.8",
+          "com.github.andyglow"    %% "scala-jsonschema"             % "0.7.9",
           circe                    %% "circe-jackson212"             % "0.14.0",
-          circe                    %% "circe-generic"                % "0.14.2",
-          "org.scala-lang.modules" %% "scala-collection-compat"      % "2.7.0",
+          circe                    %% "circe-generic"                % "0.14.3",
+          "org.scala-lang.modules" %% "scala-collection-compat"      % "2.8.1",
           "org.typelevel"          %% "munit-cats-effect-3"          % "1.0.7"  % Test,
-          "com.dimafeng"           %% "testcontainers-scala-munit"   % "0.40.8" % Test,
-          "ch.qos.logback"          % "logback-classic"              % "1.2.11" % Test,
+          "com.dimafeng"           %% "testcontainers-scala-munit"   % "0.40.11" % Test,
+          "ch.qos.logback"          % "logback-classic"              % "1.4.4" % Test,
           "io.confluent"            % "kafka-json-schema-serializer" % "7.1.1"
         )
       }
