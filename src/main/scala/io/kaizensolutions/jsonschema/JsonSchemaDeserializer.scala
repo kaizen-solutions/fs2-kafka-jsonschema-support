@@ -1,8 +1,7 @@
 package io.kaizensolutions.jsonschema
 
 import cats.effect.{Ref, Sync}
-import cats.syntax.all._
-import com.github.andyglow.jsonschema._
+import cats.syntax.all.*
 import com.fasterxml.jackson.databind.{DeserializationFeature, JsonNode, ObjectMapper}
 import fs2.kafka.Deserializer
 import io.circe.Decoder
@@ -21,8 +20,16 @@ object JsonSchemaDeserializer   {
   def apply[F[_]: Sync, A: Decoder](
     settings: JsonSchemaDeserializerSettings,
     client: SchemaRegistryClient
-  )(implicit jsonSchema: json.Schema[A], tag: ClassTag[A]): F[Deserializer[F, A]] = {
-    val fObjectMapper: F[ObjectMapper]   =
+  )(implicit jsonSchema: json.Schema[A], tag: ClassTag[A]): F[Deserializer[F, A]] =
+    toJsonSchema(jsonSchema, settings.jsonSchemaId)
+      .flatMap( schema => apply(settings, client, schema))
+
+  def apply[F[_] : Sync, A: Decoder](
+        settings: JsonSchemaDeserializerSettings,
+        client: SchemaRegistryClient,
+        schema: JsonSchema
+      ): F[Deserializer[F, A]] = {
+    val fObjectMapper: F[ObjectMapper] =
       Sync[F].delay {
         val instance = Jackson.newObjectMapper()
         if (settings.failOnUnknownKeys)
@@ -32,22 +39,10 @@ object JsonSchemaDeserializer   {
           )
         instance
       }
-    val fClientJsonSchema: F[JsonSchema] =
-      Sync[F].delay {
-        val schema =
-          new JsonSchema(
-            jsonSchema.draft07(
-              settings.jsonSchemaId
-                .getOrElse(tag.runtimeClass.getSimpleName.toLowerCase + "schema.json")
-            )
-          )
-        schema.validate()
-        schema
-      }
 
-    (fObjectMapper, fClientJsonSchema, Ref.of[F, Set[Int]](Set.empty[Int])).mapN {
-      case (objectMapper, clientSchema, cache) =>
-        new JsonSchemaDeserializer[F, A](settings, clientSchema, objectMapper, cache, client).jsonSchemaDeserializer
+    (fObjectMapper, Ref.of[F, Set[Int]](Set.empty[Int])).mapN {
+      case (objectMapper, cache) =>
+        new JsonSchemaDeserializer[F, A](settings, schema, objectMapper, cache, client).jsonSchemaDeserializer
     }
   }
 }

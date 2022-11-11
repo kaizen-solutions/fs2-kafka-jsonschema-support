@@ -3,7 +3,6 @@ package io.kaizensolutions.jsonschema
 import cats.effect.{Ref, Sync}
 import cats.syntax.all._
 import com.fasterxml.jackson.databind.JsonNode
-import com.github.andyglow.jsonschema._
 import fs2.kafka.{RecordSerializer, Serializer}
 import io.circe.Encoder
 import io.circe.jackson.circeToJackson
@@ -45,21 +44,19 @@ object JsonSchemaSerializer {
   def apply[F[_]: Sync, A: Encoder](
     settings: JsonSchemaSerializerSettings,
     client: SchemaRegistryClient
-  )(implicit jsonSchema: json.Schema[A], tag: ClassTag[A]): F[RecordSerializer[F, A]] = {
-    val fSchema =
-      Sync[F].delay {
-        val instance = new JsonSchema(
-          jsonSchema.draft07(
-            settings.jsonSchemaId.getOrElse(tag.runtimeClass.getSimpleName.toLowerCase + "schema.json")
-          )
-        )
-        instance.validate()
-        instance
-      }
+  )(implicit jsonSchema: json.Schema[A], tag: ClassTag[A]): F[RecordSerializer[F, A]] =
+    toJsonSchema(jsonSchema, settings.jsonSchemaId)
+      .flatMap(schema => apply(settings, client, schema))
+
+  def apply[F[_] : Sync, A: Encoder](
+    settings: JsonSchemaSerializerSettings,
+    client: SchemaRegistryClient,
+    schema: JsonSchema
+  ): F[RecordSerializer[F, A]] = {
 
     val fCache = Ref.of[F, Map[SubjectSchema, ParsedSchema]](Map.empty)
 
-    (fSchema, fCache).mapN { case (schema, cache) =>
+    fCache.map { cache =>
       val serializer = JsonSchemaSerializer[F, A](client, settings, cache, schema)
       RecordSerializer.instance(
         forKey = Sync[F].pure(serializer.jsonSchemaSerializer(true)),
