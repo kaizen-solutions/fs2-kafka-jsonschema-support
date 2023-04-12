@@ -70,18 +70,19 @@ lazy val root =
       libraryDependencies ++= {
         val circe     = "io.circe"
         val fd4s      = "com.github.fd4s"
-        val fs2KafkaV = "2.5.0"
+        val fs2KafkaV = "3.0.0"
+
         Seq(
           fd4s                     %% "fs2-kafka"                    % fs2KafkaV,
           fd4s                     %% "fs2-kafka-vulcan"             % fs2KafkaV,
           "com.github.andyglow"    %% "scala-jsonschema"             % "0.7.9",
           circe                    %% "circe-jackson212"             % "0.14.0",
-          circe                    %% "circe-generic"                % "0.14.3",
+          circe                    %% "circe-generic"                % "0.14.5",
           "org.scala-lang.modules" %% "scala-collection-compat"      % "2.8.1",
-          "org.typelevel"          %% "munit-cats-effect-3"          % "1.0.7"  % Test,
+          "org.typelevel"          %% "munit-cats-effect-3"          % "1.0.7"   % Test,
           "com.dimafeng"           %% "testcontainers-scala-munit"   % "0.40.11" % Test,
-          "ch.qos.logback"          % "logback-classic"              % "1.4.4" % Test,
-          "io.confluent"            % "kafka-json-schema-serializer" % "7.1.1"
+          "ch.qos.logback"          % "logback-classic"              % "1.4.4"   % Test,
+          "io.confluent"            % "kafka-json-schema-serializer" % "7.3.3"
         )
       }
     )

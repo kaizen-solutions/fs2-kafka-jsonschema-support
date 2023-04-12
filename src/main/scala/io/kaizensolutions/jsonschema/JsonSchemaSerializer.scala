@@ -3,7 +3,7 @@ package io.kaizensolutions.jsonschema
 import cats.effect.{Ref, Sync}
 import cats.syntax.all._
 import com.fasterxml.jackson.databind.JsonNode
-import fs2.kafka.{RecordSerializer, Serializer}
+import fs2.kafka.{KeySerializer, Serializer, ValueSerializer}
 import io.circe.Encoder
 import io.circe.jackson.circeToJackson
 import io.circe.syntax._
@@ -16,6 +16,7 @@ import io.kaizensolutions.jsonschema.JsonSchemaSerializer.SubjectSchema
 import java.io.{ByteArrayOutputStream, IOException}
 import java.nio.ByteBuffer
 import scala.reflect.ClassTag
+import scala.jdk.OptionConverters._
 
 /**
  * Look at Confluent's KafkaJsonSchemaSerializer -> AbstractKafkaJsonSchemaSerializer -> AbstractKafkaSchemaSerDe
@@ -36,37 +37,46 @@ import scala.reflect.ClassTag
  *   see AbstractKafkaJsonSchemaDeserializer for deserialization details
  */
 object JsonSchemaSerializer {
-  private[jsonschema] final case class SubjectSchema(
-    subject: String,
-    schema: ParsedSchema
-  )
+  final case class SubjectSchema(subject: String, schema: ParsedSchema)
 
-  def apply[F[_]: Sync, A: Encoder](
-    settings: JsonSchemaSerializerSettings,
-    client: SchemaRegistryClient
-  )(implicit jsonSchema: json.Schema[A], tag: ClassTag[A]): F[RecordSerializer[F, A]] =
-    toJsonSchema(jsonSchema, settings.jsonSchemaId)
-      .flatMap(schema => apply(settings, client, schema))
-
-  def apply[F[_] : Sync, A: Encoder](
+  def forKey[F[_]: Sync, A: Encoder](
     settings: JsonSchemaSerializerSettings,
     client: SchemaRegistryClient,
-    schema: JsonSchema
-  ): F[RecordSerializer[F, A]] = {
+  )(implicit jsonSchema: json.Schema[A], tag: ClassTag[A]): F[KeySerializer[F, A]] =
+    toJsonSchema(jsonSchema, settings.jsonSchemaId)
+      .flatMap(forKey[F, A](settings, client, _))
 
-    val fCache = Ref.of[F, Map[SubjectSchema, ParsedSchema]](Map.empty)
+  def forKey[F[_] : Sync, A: Encoder](
+    settings: JsonSchemaSerializerSettings,
+    client: SchemaRegistryClient,
+    schema: JsonSchema,
+  ): F[KeySerializer[F, A]] =
+    Ref.of[F, Map[SubjectSchema, ParsedSchema]](Map.empty)
+      .map { cache =>
+        new JsonSchemaSerializer[F, A](client, settings, cache, schema)
+          .jsonSchemaSerializer(true)
+      }
 
-    fCache.map { cache =>
-      val serializer = JsonSchemaSerializer[F, A](client, settings, cache, schema)
-      RecordSerializer.instance(
-        forKey = Sync[F].pure(serializer.jsonSchemaSerializer(true)),
-        forValue = Sync[F].pure(serializer.jsonSchemaSerializer(false))
-      )
-    }
-  }
+  def forValue[F[_]: Sync, A: Encoder](
+    settings: JsonSchemaSerializerSettings,
+    client: SchemaRegistryClient,
+  )(implicit jsonSchema: json.Schema[A], tag: ClassTag[A]): F[ValueSerializer[F, A]] =
+    toJsonSchema(jsonSchema, settings.jsonSchemaId)
+      .flatMap(forValue(settings, client, _))
+
+  def forValue[F[_] : Sync, A: Encoder](
+    settings: JsonSchemaSerializerSettings,
+    client: SchemaRegistryClient,
+    schema: JsonSchema,
+  ): F[ValueSerializer[F, A]] =
+    Ref.of[F, Map[SubjectSchema, ParsedSchema]](Map.empty)
+      .map { cache =>
+        new JsonSchemaSerializer[F, A](client, settings, cache, schema)
+          .jsonSchemaSerializer(false)
+      }
 }
 
-private[jsonschema] final case class JsonSchemaSerializer[F[_]: Sync, A: Encoder] private (
+private final class JsonSchemaSerializer[F[_]: Sync, A: Encoder](
   client: SchemaRegistryClient,
   settings: JsonSchemaSerializerSettings,
   cache: Ref[F, Map[SubjectSchema, ParsedSchema]],
@@ -117,8 +127,9 @@ private[jsonschema] final case class JsonSchemaSerializer[F[_]: Sync, A: Encoder
   }
 
   private def validatePayload(schema: JsonSchema, jsonPayload: JsonNode): F[Unit] =
-    if (settings.validatePayload) Sync[F].delay(schema.validate(jsonPayload))
-    else Sync[F].unit
+    Sync[F].whenA(settings.validatePayload) {
+      Sync[F].delay(schema.validate(jsonPayload))
+    }
 
   private def subjectName(isKey: Boolean)(topic: String): String =
     if (isKey) s"$topic-key" else s"$topic-value"
@@ -140,16 +151,19 @@ private[jsonschema] final case class JsonSchemaSerializer[F[_]: Sync, A: Encoder
             metadata.getSchema,
             metadata.getReferences
           )
-        }.flatMap { optSchema =>
-          if (optSchema.isPresent) Sync[F].pure(optSchema.get)
-          else
-            Sync[F].delay(new JsonSchema(metadata.getSchema).validate()) >>
-              // successfully parsed the schema locally means that the client was not properly configured
-              Sync[F].raiseError[ParsedSchema](
-                new RuntimeException(
-                  "Please enable JSON support in SchemaRegistryClientSettings by using withJsonSchemaSupport"
+        }.flatMap { 
+          _.toScala match {
+            case Some(x) =>
+              Sync[F].pure(x)
+            case None    =>
+              Sync[F].delay(new JsonSchema(metadata.getSchema).validate()) >>
+                // successfully parsed the schema locally means that the client was not properly configured
+                Sync[F].raiseError[ParsedSchema](
+                  new RuntimeException(
+                    "Please enable JSON support in SchemaRegistryClientSettings by using withJsonSchemaSupport"
+                  )
                 )
-              )
+          }
         }
       }
 
@@ -170,15 +184,12 @@ private[jsonschema] final case class JsonSchemaSerializer[F[_]: Sync, A: Encoder
       // the latest version must be backwards compatible with the current schema
       // this does not test forward compatibility to allow unions
       compatIssues   = latestVersion.isBackwardCompatible(schema)
-      _             <- if (latestCompatStrict && !compatIssues.isEmpty)
+      _             <- Sync[F].whenA(latestCompatStrict && !compatIssues.isEmpty) {
                          Sync[F].raiseError(
                            new IOException(s"Incompatible schema: ${compatIssues.toArray.mkString(", ")}")
                          )
-                       else Sync[F].unit
-      _             <- result match {
-                         case Some(_) => Sync[F].unit
-                         case None    => cache.update(_ + (ss -> latestVersion))
-                       }
+                      }
+      _             <- Sync[F].whenA(result.isEmpty) { cache.update(_ + (ss -> latestVersion)) }
     } yield latestVersion
   }
 }

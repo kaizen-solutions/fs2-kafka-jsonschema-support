@@ -3,7 +3,7 @@ package io.kaizensolutions.jsonschema
 import cats.effect.{Ref, Sync}
 import cats.syntax.all.*
 import com.fasterxml.jackson.databind.{DeserializationFeature, JsonNode, ObjectMapper}
-import fs2.kafka.Deserializer
+import fs2.kafka.{Deserializer, ValueDeserializer}
 import io.circe.Decoder
 import io.circe.jackson.jacksonToCirce
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
@@ -17,36 +17,30 @@ import scala.reflect.ClassTag
 
 // See AbstractKafkaJsonSchemaDeserializer
 object JsonSchemaDeserializer   {
-  def apply[F[_]: Sync, A: Decoder](
+  def forValue[F[_]: Sync, A: Decoder](
     settings: JsonSchemaDeserializerSettings,
     client: SchemaRegistryClient
-  )(implicit jsonSchema: json.Schema[A], tag: ClassTag[A]): F[Deserializer[F, A]] =
+  )(implicit jsonSchema: json.Schema[A], tag: ClassTag[A]): F[ValueDeserializer[F, A]] =
     toJsonSchema(jsonSchema, settings.jsonSchemaId)
-      .flatMap( schema => apply(settings, client, schema))
+      .flatMap( schema => forValue(settings, client, schema))
 
-  def apply[F[_] : Sync, A: Decoder](
-        settings: JsonSchemaDeserializerSettings,
-        client: SchemaRegistryClient,
-        schema: JsonSchema
-      ): F[Deserializer[F, A]] = {
-    val fObjectMapper: F[ObjectMapper] =
-      Sync[F].delay {
-        val instance = Jackson.newObjectMapper()
-        if (settings.failOnUnknownKeys)
-          instance.configure(
-            DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
-            settings.failOnUnknownKeys
-          )
-        instance
+  def forValue[F[_] : Sync, A: Decoder](
+    settings: JsonSchemaDeserializerSettings,
+    client: SchemaRegistryClient,
+    schema: JsonSchema
+  ): F[ValueDeserializer[F, A]] =
+    Ref.of[F, Set[Int]](Set.empty[Int])
+      .map { cache =>
+        val objectMapper = Jackson.newObjectMapper().configure(
+          DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
+          settings.failOnUnknownKeys
+        )
+
+        new JsonSchemaDeserializer[F, A](settings, schema, objectMapper, cache, client)
+          .jsonSchemaDeserializer
       }
-
-    (fObjectMapper, Ref.of[F, Set[Int]](Set.empty[Int])).mapN {
-      case (objectMapper, cache) =>
-        new JsonSchemaDeserializer[F, A](settings, schema, objectMapper, cache, client).jsonSchemaDeserializer
-    }
-  }
 }
-private[jsonschema] class JsonSchemaDeserializer[F[_]: Sync, A] private (
+private class JsonSchemaDeserializer[F[_]: Sync, A](
   settings: JsonSchemaDeserializerSettings,
   clientSchema: JsonSchema,
   objectMapper: ObjectMapper,
@@ -84,8 +78,8 @@ private[jsonschema] class JsonSchemaDeserializer[F[_]: Sync, A] private (
 
         check.as(jacksonToCirce(jsonNode))
       }
-        .map(decoder.decodeJson)
-        .rethrow
+      .map(decoder.decodeJson)
+      .rethrow
     }
 
   private def getByteBuffer(payload: Array[Byte]): ByteBuffer = {
@@ -98,7 +92,7 @@ private[jsonschema] class JsonSchemaDeserializer[F[_]: Sync, A] private (
   private def checkSchemaCompatibility(serverSubjectId: Int, serverSchema: JsonSchema): F[Unit] = {
     val checkSchemaUpdateCache =
       Sync[F].delay {
-        val incompatibilities = clientSchema.isBackwardCompatible(serverSchema)
+      val incompatibilities = clientSchema.isBackwardCompatible(serverSchema)
         if (!incompatibilities.isEmpty)
           throw new IOException(
             s"Incompatible consumer schema with server schema: ${incompatibilities.toArray.mkString(", ")}"
