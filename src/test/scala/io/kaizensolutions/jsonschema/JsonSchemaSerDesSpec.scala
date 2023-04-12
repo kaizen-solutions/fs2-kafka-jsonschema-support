@@ -219,8 +219,7 @@ class JsonSchemaSerDesSpec extends CatsEffectSuite with TestContainersForAll {
               )
             }
             .groupWithin(1000, 1.second)
-            .evalMap(_.sequence) // TODO: traverse?
-            .map(x => x.flatMap(_.toIndexedChunk.map(_._1.value))) // TODO: clean up?
+            .evalMap(_.flatTraverse(_.map(_.map(_._1.value))))
             .flatMap(Stream.chunk)
         }
         .compile
