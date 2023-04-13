@@ -228,7 +228,7 @@ class JsonSchemaSerDesSpec extends CatsEffectSuite with TestContainersForAll {
     assertion(produceElements)
   }
 
-  def consumeFromKafka[F[_]: Async, A: Decoder: json.Schema: ClassTag](
+  def consumeFromKafka[F[+_]: Async, A: Decoder: json.Schema: ClassTag](
     fClient: F[SchemaRegistryClient],
     settings: JsonSchemaDeserializerSettings,
     groupId: String,

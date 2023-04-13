@@ -80,7 +80,7 @@ lazy val root =
           circe                    %% "circe-generic"                % "0.14.5",
           "org.scala-lang.modules" %% "scala-collection-compat"      % "2.8.1",
           "org.typelevel"          %% "munit-cats-effect-3"          % "1.0.7"   % Test,
-          "com.dimafeng"           %% "testcontainers-scala-munit"   % "0.40.11" % Test,
+          "com.dimafeng"           %% "testcontainers-scala-munit"   % "0.40.14" % Test,
           "ch.qos.logback"          % "logback-classic"              % "1.4.4"   % Test,
           "io.confluent"            % "kafka-json-schema-serializer" % "7.3.3"
         )

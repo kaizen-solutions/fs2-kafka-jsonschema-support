@@ -17,41 +17,25 @@ import scala.reflect.ClassTag
 
 // See AbstractKafkaJsonSchemaDeserializer
 object JsonSchemaDeserializer {
-  def forValue[F[_]: Sync, A: Decoder](
+  def forValue[F[+_]: Sync, A: Decoder](
     settings: JsonSchemaDeserializerSettings,
     client: SchemaRegistryClient
   )(implicit jsonSchema: json.Schema[A], tag: ClassTag[A]): F[ValueDeserializer[F, A]] =
     toJsonSchema(jsonSchema, settings.jsonSchemaId)
-      .flatMap(forValue(settings, client, _))
+      .flatMap(create(settings, client, _))
 
-  def forValue[F[_]: Sync, A: Decoder](
-    settings: JsonSchemaDeserializerSettings,
-    client: SchemaRegistryClient,
-    schema: JsonSchema
-  ): F[ValueDeserializer[F, A]] =
-    Ref.of[F, Set[Int]](Set.empty[Int]).map { cache =>
-      val objectMapper = Jackson
-        .newObjectMapper()
-        .configure(
-          DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
-          settings.failOnUnknownKeys
-        )
-
-      new JsonSchemaDeserializer[F, A](settings, schema, objectMapper, cache, client).jsonSchemaDeserializer
-    }
-
-  def forKey[F[_]: Sync, A: Decoder](
+  def forKey[F[+_]: Sync, A: Decoder](
     settings: JsonSchemaDeserializerSettings,
     client: SchemaRegistryClient
   )(implicit jsonSchema: json.Schema[A], tag: ClassTag[A]): F[KeyDeserializer[F, A]] =
     toJsonSchema(jsonSchema, settings.jsonSchemaId)
-      .flatMap(forKey(settings, client, _))
+      .flatMap(create(settings, client, _))
 
-  def forKey[F[_]: Sync, A: Decoder](
+  def create[F[+_]: Sync, A: Decoder](
     settings: JsonSchemaDeserializerSettings,
     client: SchemaRegistryClient,
     schema: JsonSchema
-  ): F[KeyDeserializer[F, A]] =
+  ): F[Deserializer[F, A]] =
     Ref.of[F, Set[Int]](Set.empty[Int]).map { cache =>
       val objectMapper = Jackson
         .newObjectMapper()
