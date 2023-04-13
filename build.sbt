@@ -1,7 +1,7 @@
 import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations._
 
 inThisBuild {
-  val scala212 = "2.12.16"
+  val scala212 = "2.12.17"
   val scala213 = "2.13.10"
 
   Seq(
@@ -81,7 +81,7 @@ lazy val root =
           "org.scala-lang.modules" %% "scala-collection-compat"      % "2.8.1",
           "org.typelevel"          %% "munit-cats-effect-3"          % "1.0.7"   % Test,
           "com.dimafeng"           %% "testcontainers-scala-munit"   % "0.40.14" % Test,
-          "ch.qos.logback"          % "logback-classic"              % "1.4.4"   % Test,
+          "ch.qos.logback"          % "logback-classic"              % "1.4.6"   % Test,
           "io.confluent"            % "kafka-json-schema-serializer" % "7.3.3"
         )
       }

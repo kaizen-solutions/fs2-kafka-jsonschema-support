@@ -21,22 +21,24 @@ object JsonSchemaDeserializer {
     settings: JsonSchemaDeserializerSettings,
     client: SchemaRegistryClient
   )(implicit jsonSchema: json.Schema[A], tag: ClassTag[A]): F[ValueDeserializer[F, A]] =
-    toJsonSchema(jsonSchema, settings.jsonSchemaId)
+    toJsonSchema[F, A](jsonSchema, settings.jsonSchemaId)
       .flatMap(create(settings, client, _))
 
   def forKey[F[+_]: Sync, A: Decoder](
     settings: JsonSchemaDeserializerSettings,
     client: SchemaRegistryClient
   )(implicit jsonSchema: json.Schema[A], tag: ClassTag[A]): F[KeyDeserializer[F, A]] =
-    toJsonSchema(jsonSchema, settings.jsonSchemaId)
+    toJsonSchema[F, A](jsonSchema, settings.jsonSchemaId)
       .flatMap(create(settings, client, _))
 
   def create[F[+_]: Sync, A: Decoder](
     settings: JsonSchemaDeserializerSettings,
     client: SchemaRegistryClient,
     schema: JsonSchema
-  ): F[Deserializer[F, A]] =
-    Ref.of[F, Set[Int]](Set.empty[Int]).map { cache =>
+  ): F[Deserializer[F, A]] = {
+    // NOTE: This is a workaround for Scala 2.12.x
+    val refMakeInstance = Ref.Make.syncInstance[F]
+    Ref.of[F, Set[Int]](Set.empty[Int])(refMakeInstance).map { cache =>
       val objectMapper = Jackson
         .newObjectMapper()
         .configure(
@@ -46,7 +48,8 @@ object JsonSchemaDeserializer {
 
       new JsonSchemaDeserializer[F, A](settings, schema, objectMapper, cache, client).jsonSchemaDeserializer
     }
-    
+  }
+
 }
 private class JsonSchemaDeserializer[F[_]: Sync, A](
   settings: JsonSchemaDeserializerSettings,

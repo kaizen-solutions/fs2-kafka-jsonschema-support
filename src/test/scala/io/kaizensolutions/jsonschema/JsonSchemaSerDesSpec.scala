@@ -31,6 +31,7 @@ class JsonSchemaSerDesSpec extends CatsEffectSuite with TestContainersForAll {
       serSettings,
       "example-topic-persons",
       examplePersons,
+      _.name,
       result => assertIO(result, examplePersons)
     )
   }
@@ -43,6 +44,7 @@ class JsonSchemaSerDesSpec extends CatsEffectSuite with TestContainersForAll {
       serSettings,
       "example-topic-persons",
       examplePersons,
+      _.name,
       result =>
         interceptMessageIO[RuntimeException](
           "Please enable JSON support in SchemaRegistryClientSettings by using withJsonSchemaSupport"
@@ -66,6 +68,7 @@ class JsonSchemaSerDesSpec extends CatsEffectSuite with TestContainersForAll {
       settings,
       topic,
       examplePersons,
+      _.name,
       result =>
         interceptMessageIO[RestClientException](
           s"""Schema being registered is incompatible with an earlier schema for subject "$topic-value"; error code: 409"""
@@ -92,6 +95,7 @@ class JsonSchemaSerDesSpec extends CatsEffectSuite with TestContainersForAll {
       settings,
       topic,
       examplePersons,
+      _.name,
       result =>
         interceptMessageIO[IOException](
           """Incompatible schema: Found incompatible change: Difference{jsonPath='#/properties/books', type=REQUIRED_PROPERTY_ADDED_TO_UNOPEN_CONTENT_MODEL}, Found incompatible change: Difference{jsonPath='#/properties/booksRead', type=PROPERTY_REMOVED_FROM_CLOSED_CONTENT_MODEL}"""
@@ -118,6 +122,7 @@ class JsonSchemaSerDesSpec extends CatsEffectSuite with TestContainersForAll {
       settings,
       topic,
       examplePersons,
+      _.name,
       result =>
         interceptMessageIO[RestClientException](
           """Schema not found; error code: 40403"""
@@ -149,6 +154,7 @@ class JsonSchemaSerDesSpec extends CatsEffectSuite with TestContainersForAll {
       settings,
       topic,
       examplePersons,
+      _.name,
       result => assertIO(result, examplePersons)
     )
   }
@@ -200,13 +206,14 @@ class JsonSchemaSerDesSpec extends CatsEffectSuite with TestContainersForAll {
     settings: JsonSchemaSerializerSettings,
     topic: String,
     input: List[A],
+    key: A => String,
     assertion: F[List[A]] => F[Any]
   ): F[Any] = {
     val produceElements: F[List[A]] =
       Stream
         .eval[F, SchemaRegistryClient](fClient)
         .evalMap(JsonSchemaSerializer.forValue[F, A](settings, _))
-        .flatMap(implicit serializer => kafkaProducer[F, Option[String], A])
+        .flatMap(implicit serializer => kafkaProducer[F, String, A])
         .flatMap { kafkaProducer =>
           Stream
             .emits[F, A](input)
@@ -214,7 +221,7 @@ class JsonSchemaSerDesSpec extends CatsEffectSuite with TestContainersForAll {
             .evalMap { chunkA =>
               kafkaProducer.produce(
                 ProducerRecords(
-                  chunkA.map(ProducerRecord[Option[String], A](topic, None, _))
+                  chunkA.map(a => ProducerRecord[String, A](topic, key(a), a))
                 )
               )
             }

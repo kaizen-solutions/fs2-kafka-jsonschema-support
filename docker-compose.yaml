@@ -2,7 +2,7 @@ version: '2.1'
 
 services:
   zoo1:
-    image: confluentinc/cp-zookeeper:6.2.0
+    image: confluentinc/cp-zookeeper:7.0.9
     restart: unless-stopped
     hostname: zoo1
     ports:
@@ -12,12 +12,14 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
 
   kafka1:
-    image: confluentinc/cp-kafka:6.2.0
+    image: confluentinc/cp-kafka:7.0.9
     hostname: kafka1
     ports:
       - "9092:9092"
       - "9999:9999"
     environment:
+      KAFKA_LOG_RETENTION_MINUTES: 120
+      KAFKA_LOG_CLEANUP_POLICY: compact
       KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://kafka1:19092,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
@@ -33,7 +35,7 @@ services:
       - zoo1
 
   kafka-schema-registry:
-    image: confluentinc/cp-schema-registry:6.2.0
+    image: confluentinc/cp-schema-registry:7.0.9
     hostname: kafka-schema-registry
     ports:
       - "8081:8081"
