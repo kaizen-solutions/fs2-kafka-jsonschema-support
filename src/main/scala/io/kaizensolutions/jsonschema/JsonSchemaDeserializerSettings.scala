@@ -5,13 +5,20 @@ object JsonSchemaDeserializerSettings {
 }
 
 /**
- * Settings that describe how to interact with Confluent's Schema Registry when deserializing data
+ * Settings that describe how to interact with Confluent's Schema Registry when
+ * deserializing data
  *
- * @param validatePayloadAgainstServerSchema will validate the payload against the schema on the server
- * @param validatePayloadAgainstClientSchema will validate the payload against the schema derived from the datatype you specify
- * @param validateClientSchemaAgainstServer  will validate the schema you specify against the server's schema
- * @param failOnUnknownKeys                  will specify failure when unknown JSON keys are encountered
- * @param jsonSchemaId                       is used to override the schema ID of the data that is being consumed
+ * @param validatePayloadAgainstServerSchema
+ *   will validate the payload against the schema on the server
+ * @param validatePayloadAgainstClientSchema
+ *   will validate the payload against the schema derived from the datatype you
+ *   specify
+ * @param validateClientSchemaAgainstServer
+ *   will validate the schema you specify against the server's schema
+ * @param failOnUnknownKeys
+ *   will specify failure when unknown JSON keys are encountered
+ * @param jsonSchemaId
+ *   is used to override the schema ID of the data that is being consumed
  */
 final case class JsonSchemaDeserializerSettings(
   validatePayloadAgainstServerSchema: Boolean = false,

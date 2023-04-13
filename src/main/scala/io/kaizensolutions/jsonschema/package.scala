@@ -26,7 +26,9 @@ package object jsonschema {
       )
   }
 
-  def toJsonSchema[F[_]: Sync, T](schema: json.Schema[T], schemaId: Option[String] = None)(implicit tag: ClassTag[T]): F[JsonSchema] = {
+  def toJsonSchema[F[_]: Sync, T](schema: json.Schema[T], schemaId: Option[String] = None)(implicit
+    tag: ClassTag[T]
+  ): F[JsonSchema] = {
     import com.github.andyglow.jsonschema.*
 
     Sync[F].delay {

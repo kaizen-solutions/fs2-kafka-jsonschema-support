@@ -13,7 +13,7 @@ import io.circe.{Codec, Decoder, Encoder}
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException
 import json.schema.description
-import json.{Json, Schema}
+import _root_.json.{Json, Schema}
 import munit.CatsEffectSuite
 
 import java.io.{File, IOException}
@@ -205,8 +205,7 @@ class JsonSchemaSerDesSpec extends CatsEffectSuite with TestContainersForAll {
     val produceElements: F[List[A]] =
       Stream
         .eval[F, SchemaRegistryClient](fClient)
-        .evalMap(JsonSchemaSerializer[F, A](settings, _))
-        .evalMap(_.forValue)
+        .evalMap(JsonSchemaSerializer.forValue[F, A](settings, _))
         .flatMap(implicit serializer => kafkaProducer[F, Option[String], A])
         .flatMap { kafkaProducer =>
           Stream
@@ -215,14 +214,12 @@ class JsonSchemaSerDesSpec extends CatsEffectSuite with TestContainersForAll {
             .evalMap { chunkA =>
               kafkaProducer.produce(
                 ProducerRecords(
-                  chunkA.map(ProducerRecord[Option[String], A](topic, None, _)),
-                  chunkA
+                  chunkA.map(ProducerRecord[Option[String], A](topic, None, _))
                 )
               )
             }
             .groupWithin(1000, 1.second)
-            .evalMap(_.sequence)
-            .map(_.flatMap(_.passthrough))
+            .evalMap(_.flatTraverse(_.map(_.map(_._1.value))))
             .flatMap(Stream.chunk)
         }
         .compile
@@ -231,7 +228,7 @@ class JsonSchemaSerDesSpec extends CatsEffectSuite with TestContainersForAll {
     assertion(produceElements)
   }
 
-  def consumeFromKafka[F[_]: Async, A: Decoder: json.Schema: ClassTag](
+  def consumeFromKafka[F[+_]: Async, A: Decoder: json.Schema: ClassTag](
     fClient: F[SchemaRegistryClient],
     settings: JsonSchemaDeserializerSettings,
     groupId: String,
@@ -240,7 +237,7 @@ class JsonSchemaSerDesSpec extends CatsEffectSuite with TestContainersForAll {
   ): Stream[F, A] =
     Stream
       .eval(fClient)
-      .evalMap(client => JsonSchemaDeserializer[F, A](settings, client))
+      .evalMap(client => JsonSchemaDeserializer.forValue[F, A](settings, client))
       .flatMap(implicit des => kafkaConsumer[F, Option[String], A](groupId))
       .evalTap(_.subscribeTo(topic))
       .flatMap(_.stream)
@@ -261,8 +258,8 @@ class JsonSchemaSerDesSpec extends CatsEffectSuite with TestContainersForAll {
       .start()
 
   def kafkaProducer[F[_]: Async, K, V](implicit
-    keySerializer: Serializer[F, K],
-    valueSerializer: Serializer[F, V]
+    keySerializer: KeySerializer[F, K],
+    valueSerializer: ValueSerializer[F, V]
   ): Stream[F, KafkaProducer[F, K, V]] = {
     val settings: ProducerSettings[F, K, V] =
       ProducerSettings[F, K, V].withBootstrapServers("localhost:9092")
@@ -270,8 +267,8 @@ class JsonSchemaSerDesSpec extends CatsEffectSuite with TestContainersForAll {
   }
 
   def kafkaConsumer[F[_]: Async, K, V](groupId: String)(implicit
-    keyDeserializer: Deserializer[F, K],
-    valueDeserializer: Deserializer[F, V]
+    keyDeserializer: KeyDeserializer[F, K],
+    valueDeserializer: ValueDeserializer[F, V]
   ): Stream[F, KafkaConsumer[F, K, V]] = {
     val settings = ConsumerSettings[F, K, V]
       .withBootstrapServers("localhost:9092")
