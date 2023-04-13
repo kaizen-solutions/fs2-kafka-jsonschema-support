@@ -83,11 +83,10 @@ private final class JsonSchemaSerializer[F[_]: Sync, A: Encoder](
   cache: Ref[F, Map[SubjectSchema, ParsedSchema]],
   clientSchema: JsonSchema
 ) {
-  private val MagicByte: Byte = 0x0
-  private val IdSize: Int     = 4
+  val MagicByte: Byte = 0x0
+  val IdSize: Int     = 4
 
-  private val objectMapper = Jackson.newObjectMapper()
-  private val objectWriter = objectMapper.writer()
+  val objectWriter = Jackson.newObjectMapper().writer()
 
   def jsonSchemaSerializer(isKey: Boolean): Serializer[F, A] = {
     val mkSubject = subjectName(isKey) _
