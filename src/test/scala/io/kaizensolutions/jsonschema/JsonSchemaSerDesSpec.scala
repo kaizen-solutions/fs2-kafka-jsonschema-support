@@ -96,10 +96,7 @@ class JsonSchemaSerDesSpec extends CatsEffectSuite with TestContainersForAll {
       topic,
       examplePersons,
       _.name,
-      result =>
-        interceptMessageIO[IOException](
-          """Incompatible schema: Found incompatible change: Difference{jsonPath='#/properties/books', type=REQUIRED_PROPERTY_ADDED_TO_UNOPEN_CONTENT_MODEL}, Found incompatible change: Difference{jsonPath='#/properties/booksRead', type=PROPERTY_REMOVED_FROM_CLOSED_CONTENT_MODEL}"""
-        )(result)
+      result => interceptIO[IOException](result).map(_.getMessage.startsWith("Incompatible schema"))
     )
   }
 

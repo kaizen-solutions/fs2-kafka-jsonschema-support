@@ -1,12 +1,12 @@
 package io.kaizensolutions.jsonschema
 
 import cats.effect.{Ref, Sync}
-import cats.syntax.all._
+import cats.syntax.all.*
 import com.fasterxml.jackson.databind.JsonNode
 import fs2.kafka.{KeySerializer, Serializer, ValueSerializer}
 import io.circe.Encoder
 import io.circe.jackson.circeToJackson
-import io.circe.syntax._
+import io.circe.syntax.*
 import io.confluent.kafka.schemaregistry.ParsedSchema
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
 import io.confluent.kafka.schemaregistry.json.JsonSchema
@@ -16,7 +16,7 @@ import io.kaizensolutions.jsonschema.JsonSchemaSerializer.SubjectSchema
 import java.io.{ByteArrayOutputStream, IOException}
 import java.nio.ByteBuffer
 import scala.reflect.ClassTag
-import scala.jdk.OptionConverters._
+import scala.jdk.OptionConverters.*
 
 /**
  * Look at Confluent's KafkaJsonSchemaSerializer ->
@@ -153,8 +153,8 @@ private final class JsonSchemaSerializer[F[_]: Sync, A: Encoder](
           )
         }.flatMap {
           _.toScala match {
-            case Some(x) =>
-              Sync[F].pure(x)
+            case Some(schema) =>
+              Sync[F].pure(schema)
             case None =>
               Sync[F].delay(new JsonSchema(metadata.getSchema).validate()) >>
                 // successfully parsed the schema locally means that the client was not properly configured
