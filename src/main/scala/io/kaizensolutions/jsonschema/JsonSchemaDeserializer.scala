@@ -17,21 +17,23 @@ import scala.reflect.ClassTag
 
 // See AbstractKafkaJsonSchemaDeserializer
 object JsonSchemaDeserializer {
-  def forValue[F[+_]: Sync, A: Decoder](
+  def forValue[F[_]: Sync, A: Decoder](
     settings: JsonSchemaDeserializerSettings,
     client: SchemaRegistryClient
   )(implicit jsonSchema: json.Schema[A], tag: ClassTag[A]): F[ValueDeserializer[F, A]] =
     toJsonSchema[F, A](jsonSchema, settings.jsonSchemaId)
       .flatMap(create(settings, client, _))
+      .map(identity)
 
-  def forKey[F[+_]: Sync, A: Decoder](
+  def forKey[F[_]: Sync, A: Decoder](
     settings: JsonSchemaDeserializerSettings,
     client: SchemaRegistryClient
   )(implicit jsonSchema: json.Schema[A], tag: ClassTag[A]): F[KeyDeserializer[F, A]] =
     toJsonSchema[F, A](jsonSchema, settings.jsonSchemaId)
       .flatMap(create(settings, client, _))
+      .map(identity)
 
-  def create[F[+_]: Sync, A: Decoder](
+  def create[F[_]: Sync, A: Decoder](
     settings: JsonSchemaDeserializerSettings,
     client: SchemaRegistryClient,
     schema: JsonSchema

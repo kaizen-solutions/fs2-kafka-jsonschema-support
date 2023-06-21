@@ -41,8 +41,8 @@ inThisBuild {
 
 ThisBuild / scalacOptions ++= {
   CrossVersion.partialVersion(scalaVersion.value) match {
-    case Some((2, 12 | 13)) =>
-      Seq(
+    case Some((2, minor @ (12 | 13))) =>
+      val base = Seq(
         "-deprecation",
         "-encoding",
         "UTF-8",
@@ -57,6 +57,8 @@ ThisBuild / scalacOptions ++= {
         "-Ywarn-unused",
         "-Xsource:3"
       )
+      if (minor == 12) "-Ypartial-unification" +: base
+      else base
 
     case Some((3, _)) =>
       Seq.empty

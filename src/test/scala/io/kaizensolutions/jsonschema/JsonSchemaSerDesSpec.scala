@@ -1,14 +1,14 @@
 package io.kaizensolutions.jsonschema
 
-import cats.effect._
-import cats.syntax.all._
+import cats.effect.*
+import cats.syntax.all.*
 import com.dimafeng.testcontainers.DockerComposeContainer.ComposeFile
 import com.dimafeng.testcontainers.munit.TestContainersForAll
 import com.dimafeng.testcontainers.{DockerComposeContainer, ExposedService}
 import fs2.Stream
-import fs2.kafka._
+import fs2.kafka.*
 import fs2.kafka.vulcan.SchemaRegistryClientSettings
-import io.circe.generic.semiauto._
+import io.circe.generic.semiauto.*
 import io.circe.{Codec, Decoder, Encoder}
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException
@@ -232,7 +232,7 @@ class JsonSchemaSerDesSpec extends CatsEffectSuite with TestContainersForAll {
     assertion(produceElements)
   }
 
-  def consumeFromKafka[F[+_]: Async, A: Decoder: json.Schema: ClassTag](
+  def consumeFromKafka[F[_]: Async, A: Decoder: json.Schema: ClassTag](
     fClient: F[SchemaRegistryClient],
     settings: JsonSchemaDeserializerSettings,
     groupId: String,
