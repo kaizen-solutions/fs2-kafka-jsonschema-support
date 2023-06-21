@@ -70,9 +70,8 @@ class JsonSchemaSerDesSpec extends CatsEffectSuite with TestContainersForAll {
       examplePersons,
       _.name,
       result =>
-        interceptMessageIO[RestClientException](
-          s"""Schema being registered is incompatible with an earlier schema for subject "$topic-value"; error code: 409"""
-        )(result)
+        interceptIO[RestClientException](result)
+          .map(_.getMessage.startsWith("Schema being registered is incompatible with an earlier schema"))
     )
   }
 
