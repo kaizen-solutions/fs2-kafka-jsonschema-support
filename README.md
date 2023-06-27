@@ -1,7 +1,8 @@
 ## FS2 Kafka JsonSchema support ##
 
 [![Continuous Integration](https://github.com/kaizen-solutions/fs2-kafka-jsonschema-support/actions/workflows/ci.yml/badge.svg)](https://github.com/kaizen-solutions/fs2-kafka-jsonschema-support/actions/workflows/ci.yml)
-[![](https://jitpack.io/v/kaizen-solutions/fs2-kafka-jsonschema-support.svg)](https://jitpack.io/#kaizen-solutions/fs2-kafka-jsonschema-support)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.kaizen-solutions/fs2-kafka-jsonschema-support_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.kaizen-solutions/fs2-kafka-jsonschema-support_2.13)
+[![JitPack](https://jitpack.io/v/kaizen-solutions/fs2-kafka-jsonschema-support.svg)](https://jitpack.io/#kaizen-solutions/fs2-kafka-jsonschema-support)
 
 
 Provides FS2 Kafka `Serializer`s and `Deserializer`s that provide integration with Confluent Schema Registry for JSON messages with JSON Schemas. 
@@ -18,12 +19,9 @@ This functionality is backed by the following libraries:
 
 Add the following to your `build.sbt`
 ```sbt
-resolvers ++= Seq(
-  "jitpack" at "https://jitpack.io",
-  "confluent" at "https://packages.confluent.io/maven"
-)
+resolvers ++= Seq("confluent" at "https://packages.confluent.io/maven")
 
-libraryDependencies += "com.github.kaizen-solutions" %% "fs2-kafka-jsonschema-support" % "<version>"
+libraryDependencies += "io.kaizen-solutions" %% "fs2-kafka-jsonschema-support" % "<latest-version>"
 ```
 
 1. Define your data-types
