@@ -1,6 +1,6 @@
 ## FS2 Kafka JsonSchema support ##
 
-![CI Build Status](https://github.com/kaizen-solutions/fs2-kafka-jsonschema-support/actions/workflows/scala.yml/badge.svg)
+[![Continuous Integration](https://github.com/kaizen-solutions/fs2-kafka-jsonschema-support/actions/workflows/ci.yml/badge.svg)](https://github.com/kaizen-solutions/fs2-kafka-jsonschema-support/actions/workflows/ci.yml)
 [![](https://jitpack.io/v/kaizen-solutions/fs2-kafka-jsonschema-support.svg)](https://jitpack.io/#kaizen-solutions/fs2-kafka-jsonschema-support)
 
 
